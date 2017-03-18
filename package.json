@@ -2,7 +2,7 @@
     "author": "Andrew Aldridge",
     "description": "A batteries-included way to quickly build modern, fast, single-page applications",
     "bin": { "greni": "index.js" },
-    "files": [ "README.md", "index.js" ],
+    "files": [ "README.md", "index.js", "eslint-config-errors.js" ],
     "keywords": [ "greni" ],
     "license": "MIT",
     "name": "greni",

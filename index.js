@@ -22,6 +22,7 @@ const pathModule = require('path')
 const process = require('process')
 
 const docopt = require('docopt')
+const eslintConfigErrors = require('./eslint-config-errors')
 const minify = require('uglify-js-harmony').minify
 const rollup = require('rollup')
 const rollupBuble = require('rollup-plugin-buble')
@@ -157,7 +158,14 @@ function compileRollup(config) {
     const plugins = []
 
     if (config.eslint) {
-        plugins.push(rollupEslint(config.eslint))
+        const eslintConfig = {}
+        Object.assign(eslintConfig, eslintConfigErrors)
+        eslintConfig.exclude = [
+            'node_modules/**',
+            ...Object.keys(config._componentPaths).map((key) => config._componentPaths[key])]
+        eslintConfig.env = {'es6': true}
+        eslintConfig.throwError = true
+        plugins.push(rollupEslint(eslintConfig))
     }
 
     if (config.buble) {
@@ -238,11 +246,9 @@ function build(config) {
         }
     }
 
-    compileSvelte(config).then(() => compileRollup(config)).then(() => compileSorcery(config)).then(() => {
-        console.log('Done!')
-    }).catch((error) => {
-        console.error(error)
-    })
+    return compileSvelte(config).
+        then(() => compileRollup(config)).
+        then(() => compileSorcery(config))
 }
 
 function main() {
@@ -272,7 +278,13 @@ function main() {
             config.debugMode = true
         }
 
-        build(config)
+        build(config).then(() => console.log('Done!')).catch((error) => {
+            if (error.plugin !== 'eslint') {
+                console.error(error)
+            }
+
+            process.exit(1)
+        })
     }
 }
 
