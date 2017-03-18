@@ -232,7 +232,7 @@ function build(config) {
     }
 
     if (config.buble === undefined) {
-        config.buble = false
+        config.buble = null
     }
 
     // Internal state

@@ -3,7 +3,7 @@ A batteries-included way to quickly build modern, fast, single-page applications
 
 ## Introduction
 
-`greni` is the Icelandic word for the den of a fox. It is also a build tool that
+*Greni* is the Icelandic word for the den of a fox. It is also a build tool that
 intelligently concatenates a pipeline of the following tools:
 
 * [svelte](http://svelte.technology)
@@ -45,6 +45,21 @@ To automatically rebuild when your source files change, use the
 [entr](http://entrproject.org/) utility:
 
     while true; do find src/ -type f | entr -d greni; done
+
+## Configuration Reference
+
+You can configure greni via either a `greni.json` file, or `package.json`
+using the `greniConfig` key.
+
+The possible keys in this object are shown below:
+
+| Key         | Value                                                 |
+| ----------  | ----------------------------------------------------- |
+| components  | An array of svelte component paths. Defaults to `[]`. |
+| entryPoints | An object mapping `outputName` -> `entrySourceFile`.  |
+| output      | A path. Defaults to `output/`.                        |
+| buble       | An object defining `buble` options. Defaults to `null`, meaning `buble` is not run. |
+| eslint      | A boolean. Defaults to `true`.                        |
 
 ## Future Plans
 
