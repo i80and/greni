@@ -1,13 +1,13 @@
 'use strict'
 
 module.exports = {
+    'envs': ['es6', 'browser', 'worker', 'serviceworker'],
+
     'globals': [
         'document',
         'navigator',
         'window'
     ],
-
-    'envs': ['es6', 'browser', 'worker', 'serviceworker'],
 
     'parserOptions': {
         'ecmaFeatures': {

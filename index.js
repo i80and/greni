@@ -27,7 +27,6 @@ const minify = require('uglify-js-harmony').minify
 const rollup = require('rollup')
 const rollupBuble = require('rollup-plugin-buble')
 const rollupEslint = require('rollup-plugin-eslint')
-const rollupFlow = require('rollup-plugin-flow')
 const rollupNodeResolve = require('rollup-plugin-node-resolve')
 const rollupUglify = require('rollup-plugin-uglify')
 const sorcery = require('sorcery')
@@ -156,7 +155,7 @@ function compileSvelte(config) {
 function compileRollup(config) {
     const entryPoints = config.entryPoints
     const promises = []
-    const plugins = [rollupFlow()]
+    const plugins = []
 
     if (config.eslint) {
         const eslintConfig = {}
@@ -173,7 +172,7 @@ function compileRollup(config) {
     }
 
     if (!config.debugMode) {
-        plugins.push(rollupUglify({}, minify))
+        plugins.push(rollupUglify({sourceMap: 'inline'}, minify))
     }
 
     plugins.push(rollupIncludePaths(config), rollupNodeResolve())
