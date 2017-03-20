@@ -164,7 +164,6 @@ function compileRollup(config) {
         eslintConfig.exclude = [
             'node_modules/**',
             ...Object.keys(config._componentPaths).map((key) => config._componentPaths[key])]
-        eslintConfig.env = {'es6': true}
         eslintConfig.throwError = true
         plugins.push(rollupEslint(eslintConfig))
     }
@@ -280,7 +279,7 @@ function main() {
         }
 
         build(config).then(() => console.log('Done!')).catch((error) => {
-            if (error.plugin !== 'eslint') {
+            if (error.toString() !== 'Warnings or errors were found') {
                 console.error(error)
             }
 

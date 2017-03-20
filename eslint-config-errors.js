@@ -7,6 +7,8 @@ module.exports = {
         'window'
     ],
 
+    'envs': ['es6', 'browser', 'worker', 'serviceworker'],
+
     'parserOptions': {
         'ecmaFeatures': {
             'experimentalObjectRestSpread': true,
