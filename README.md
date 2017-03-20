@@ -44,7 +44,7 @@ Run `greni` or `greni --debug` to build the following artifacts:
 To automatically rebuild when your source files change, use the
 [entr](http://entrproject.org/) utility:
 
-    while true; do find src/ -type f | entr -d greni; done
+    while true; do find src/ -type f | entr -d greni || break; done
 
 ## Configuration Reference
 
