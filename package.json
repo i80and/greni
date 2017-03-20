@@ -9,7 +9,7 @@
     "license": "MIT",
     "name": "greni",
     "repository": { "type": "git", "url": "git://github.com/i80and/greni.git" },
-    "version": "0.2.0",
+    "version": "0.2.1",
     "dependencies": {
         "docopt": "0.6.2",
         "rollup": "0.41.6",
