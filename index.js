@@ -33,9 +33,14 @@ const rollupUglify = require('rollup-plugin-uglify')
 const sorcery = require('sorcery')
 const svelte = require('svelte')
 
-function tryLoadJSON(path) {
+function tryLoadJSON(path, defaultIfEmpty) {
     try {
-        return JSON.parse(fs.readFileSync(path))
+        const data = fs.readFileSync(path)
+        if (data.length === 0) {
+            return defaultIfEmpty
+        }
+
+        return JSON.parse(data)
     } catch (error) {
         if (error.code === 'ENOENT') {
             return null
@@ -284,9 +289,9 @@ function main() {
             process.chdir(args['-C'])
         }
 
-        let config = tryLoadJSON('greni.json')
+        let config = tryLoadJSON('greni.json', {})
         if (!config) {
-            config = tryLoadJSON('package.json')
+            config = tryLoadJSON('package.json', {})
             if (!config) {
                 throw new Error('Failed to find configuration file. Create "greni.json".')
             }
