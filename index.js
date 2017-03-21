@@ -5,6 +5,7 @@
 const __doc__ = `
 Usage:
   greni [-C PATH] [--debug]
+  greni init <name>
   greni -h | --help
   greni --version
 
@@ -42,6 +43,17 @@ function tryLoadJSON(path) {
 
         throw new Error(`Error parsing JSON file "${path}": ${error}`)
     }
+}
+
+function formatPackageTemplate(name) {
+    return `{
+    "name": ${JSON.stringify(name)},
+    "greniConfig": {
+        "entryPoints": {
+            "index.js": "src/index.js"
+        }
+    }
+}`
 }
 
 function fileExists(path) {
@@ -254,6 +266,19 @@ function main() {
     const args = docopt.docopt(__doc__)
     if (args['--version']) {
         console.log(`greni ${version}`)
+    } else if (args.init) {
+        const name = args['<name>']
+        try {
+            fs.mkdirSync(name)
+            fs.mkdirSync(pathModule.join(name, 'src'))
+        } catch (error) {
+            console.error(`Failed to create ${name}: ${error.code}`)
+            process.exit(1)
+        }
+
+        process.chdir(name)
+        fs.writeFileSync('package.json', formatPackageTemplate(name))
+        fs.writeFileSync('src/index.js', '')
     } else {
         if (args['-C']) {
             process.chdir(args['-C'])
