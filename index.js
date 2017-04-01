@@ -33,6 +33,8 @@ const rollupUglify = require('rollup-plugin-uglify')
 const sorcery = require('sorcery')
 const svelte = require('svelte')
 
+const SVELTE_PATH = require.resolve('svelte/shared.js')
+
 function tryLoadJSON(path, defaultIfEmpty) {
     try {
         const data = fs.readFileSync(path)
@@ -85,6 +87,10 @@ function rollupIncludePaths(config) {
         resolveId: function (file, origin) {
             if (origin === undefined) {
                 return searchProjectModule(file)
+            }
+
+            if (file === 'svelte/shared.js') {
+                return SVELTE_PATH
             }
 
             origin = pathModule.dirname(origin)
