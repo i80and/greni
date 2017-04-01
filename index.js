@@ -235,8 +235,16 @@ function build(config) {
         config.components = []
     }
 
+    if (typeof config.components !== 'object' || !Array.isArray(config.components)) {
+        throw new Error(`Configuration "components" must be an object. Got ${config.components}`)
+    }
+
     if (config.entryPoints === undefined) {
         config.entryPoints = {}
+    }
+
+    if (typeof config.entryPoints !== 'object' || Array.isArray(config.entryPoints)) {
+        throw new Error(`Configuration "entryPoints" must be an object. Got ${config.entryPoints}`)
     }
 
     if (config.debugMode === undefined) {
