@@ -24,7 +24,7 @@ const process = require('process')
 
 const docopt = require('docopt')
 const eslintConfigErrors = require('./eslint-config-errors')
-const minify = require('uglify-js-harmony').minify
+const minify = require('uglify-es').minify
 const rollup = require('rollup')
 const rollupBuble = require('rollup-plugin-buble')
 const rollupEslint = require('rollup-plugin-eslint')
