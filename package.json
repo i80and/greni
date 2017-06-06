@@ -1,15 +1,27 @@
 {
     "author": "Andrew Aldridge",
-    "bin": { "greni": "index.js" },
+    "bin": {
+        "greni": "index.js"
+    },
     "description": "A batteries-included way to quickly build modern, fast, single-page applications",
-    "email" : "i80and@foxquill.com",
-    "files": [ "README.md", "index.js", "eslint-config-errors.js", "man/greni.1" ],
-    "keywords": [ "greni" ],
+    "email": "i80and@foxquill.com",
+    "files": [
+        "README.md",
+        "index.js",
+        "eslint-config-errors.js",
+        "man/greni.1"
+    ],
+    "keywords": [
+        "greni"
+    ],
     "license": "MIT",
-    "man" : "./man/greni.1",
+    "man": "./man/greni.1",
     "name": "greni",
     "preferGlobal": true,
-    "repository": { "type": "git", "url": "git://github.com/i80and/greni.git" },
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/i80and/greni.git"
+    },
     "version": "0.4.0",
     "dependencies": {
         "docopt": "0.6.2",
