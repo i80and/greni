@@ -23,11 +23,11 @@ const pathModule = require('path')
 const process = require('process')
 
 const docopt = require('docopt')
+const eslint = require('eslint')
 const eslintConfigErrors = require('./eslint-config-errors')
 const minify = require('uglify-es').minify
 const rollup = require('rollup')
 const rollupBuble = require('rollup-plugin-buble')
-const rollupEslint = require('rollup-plugin-eslint')
 const rollupNodeResolve = require('rollup-plugin-node-resolve')
 const sorcery = require('sorcery')
 const svelte = require('svelte')
@@ -40,7 +40,7 @@ function rollupUglify(options = {}) {
         transformBundle (code) {
             const result = minify(
                 code,
-                Object.assign({ sourceMap: { url: 'out.js.map' } }, options )
+                Object.assign({sourceMap: {url: 'out.js.map'}}, options)
             )
 
             if (result.map) {
@@ -50,6 +50,37 @@ function rollupUglify(options = {}) {
 
             result.names = []
             return result
+        }
+    }
+}
+
+function rollupEslint(options, filter) {
+    const cli = new eslint.CLIEngine(options);
+    const formatter = cli.getFormatter('stylish')
+
+    return {
+        name: 'eslint',
+        transform(code, id) {
+            const file = pathModule.relative(process.cwd(), id).split(pathModule.sep).join('/')
+            if (!filter(id)) {
+                return null
+            }
+
+            const report = cli.executeOnText(code, file)
+            if (!report.errorCount && !report.warningCount) {
+                return null
+            }
+
+            const result = formatter(report.results)
+            if (result) {
+                console.log(result)
+            }
+
+            if (report.errorCount) {
+                throw Error('Errors were found')
+            }
+
+            return null
         }
     }
 }
@@ -195,18 +226,32 @@ function compileSvelte(config) {
 }
 
 function compileRollup(config) {
+    // Don't lint components or node_modules
+    function lintFilter(id) {
+        if (id.indexOf('/node_modules/') >= 0) {
+            return false
+        }
+
+        for (let key of Object.keys(config._componentPaths)) {
+            key = config._componentPaths[key]
+            if (id.indexOf(key) >= 0) {
+                return false
+            }
+        }
+
+        return true
+    }
+
     const entryPoints = config.entryPoints
     const promises = []
     const plugins = []
 
+    plugins.push(rollupIncludePaths(config), rollupNodeResolve())
+
     if (config.eslint) {
         const eslintConfig = {}
         Object.assign(eslintConfig, eslintConfigErrors)
-        eslintConfig.exclude = [
-            'node_modules/**',
-            ...Object.keys(config._componentPaths).map((key) => config._componentPaths[key])]
-        eslintConfig.throwError = true
-        plugins.push(rollupEslint(eslintConfig))
+        plugins.push(rollupEslint(eslintConfig, lintFilter))
     }
 
     if (config.buble) {
@@ -216,8 +261,6 @@ function compileRollup(config) {
     if (!config.debugMode) {
         plugins.push(rollupUglify())
     }
-
-    plugins.push(rollupIncludePaths(config), rollupNodeResolve())
 
     for (const output of Object.keys(entryPoints)) {
         const entryPoint = entryPoints[output]
