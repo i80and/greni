@@ -29,11 +29,30 @@ const rollup = require('rollup')
 const rollupBuble = require('rollup-plugin-buble')
 const rollupEslint = require('rollup-plugin-eslint')
 const rollupNodeResolve = require('rollup-plugin-node-resolve')
-const rollupUglify = require('rollup-plugin-uglify')
 const sorcery = require('sorcery')
 const svelte = require('svelte')
 
 const SVELTE_PATH = require.resolve('svelte/shared.js')
+
+function rollupUglify(options = {}) {
+    return {
+        name: 'uglify',
+        transformBundle (code) {
+            const result = minify(
+                code,
+                Object.assign({ sourceMap: { url: 'out.js.map' } }, options )
+            )
+
+            if (result.map) {
+                const commentPos = result.code.lastIndexOf('//#')
+                result.code = result.code.slice(0, commentPos).trim()
+            }
+
+            result.names = []
+            return result
+        }
+    }
+}
 
 function tryLoadJSON(path, defaultIfEmpty) {
     try {
@@ -195,7 +214,7 @@ function compileRollup(config) {
     }
 
     if (!config.debugMode) {
-        plugins.push(rollupUglify({sourceMap: 'inline'}, minify))
+        plugins.push(rollupUglify())
     }
 
     plugins.push(rollupIncludePaths(config), rollupNodeResolve())
