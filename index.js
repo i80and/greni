@@ -34,6 +34,107 @@ const svelte = require('svelte')
 
 const SVELTE_PATH = require.resolve('svelte/shared.js')
 
+function tryLoadJSON(path, defaultIfEmpty) {
+    try {
+        const data = fs.readFileSync(path)
+        if (data.length === 0) {
+            return defaultIfEmpty
+        }
+
+        return JSON.parse(data)
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            return null
+        }
+
+        throw new Error(`Error parsing JSON file "${path}": ${error}`)
+    }
+}
+
+function computeComponentOutputPath(root, componentPath, debugMode) {
+    const buildMode = debugMode ? 'debug' : 'prod'
+    return pathModule.resolve(`${root}/${componentPath.replace(/\.html$/, '.js')}.${buildMode}`)
+}
+
+function loadManifest(path) {
+    const rootConfig = tryLoadJSON(path, {})
+    if (!rootConfig || !rootConfig.greniConfig) { return null }
+
+    const config = rootConfig.greniConfig
+    if (config.output === undefined) {
+        config.output = './output'
+    }
+    config.output = config.output.replace(/\/+$/, '')
+
+    if (config.dependencies === undefined) {
+        config.dependencies = []
+    }
+
+    if (config.entryPoints === undefined) {
+        config.entryPoints = {}
+    }
+
+    if (typeof config.entryPoints !== 'object' || Array.isArray(config.entryPoints)) {
+        throw new Error(`Configuration "entryPoints" must be an object. Got ${config.entryPoints}`)
+    }
+
+    if (config.debugMode === undefined) {
+        config.debugMode = false
+    }
+
+    if (config.eslint === undefined) {
+        config.eslint = true
+    }
+
+    if (config.buble === undefined) {
+        config.buble = null
+    }
+
+    // Internal state
+    config._componentPaths = {}
+    return config
+}
+
+function formatPackageTemplate(name) {
+    return `{
+    "name": ${JSON.stringify(name)},
+    "greniConfig": {
+        "entryPoints": {
+            "index.js": "src/index.js"
+        }
+    }
+}`
+}
+
+function fileExists(path) {
+    try {
+        fs.statSync(path)
+        return path
+    } catch (error) {
+        return null
+    }
+}
+
+function makeDirsSync(path) {
+    path = pathModule.resolve(path)
+
+    try {
+        fs.mkdirSync(path)
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            makeDirsSync(pathModule.dirname(path))
+            makeDirsSync(path)
+        } else {
+            try {
+                const stat = fs.statSync(path)
+                if (!stat.isDirectory()) { throw error }
+            } catch (err) {
+                throw error
+            }
+        }
+    }
+}
+
 function rollupUglify(options = {}) {
     return {
         name: 'uglify',
@@ -85,41 +186,36 @@ function rollupEslint(options, filter) {
     }
 }
 
-function tryLoadJSON(path, defaultIfEmpty) {
+function compileSvelte(config, component) {
+    const outputPath = computeComponentOutputPath(config.output, component, config.debugMode)
+    console.log(`svelte ${component} -> ${outputPath}`)
+
+    config._componentPaths[pathModule.resolve(component.replace(/\.html$/, '.js'))] = outputPath
+    makeDirsSync(pathModule.dirname(outputPath))
+
+    const srcMtime = fs.statSync(component).mtime
+    let destMtime = 0
     try {
-        const data = fs.readFileSync(path)
-        if (data.length === 0) {
-            return defaultIfEmpty
-        }
+        destMtime = fs.statSync(outputPath).mtime
+    } catch (error) {}
 
-        return JSON.parse(data)
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            return null
-        }
-
-        throw new Error(`Error parsing JSON file "${path}": ${error}`)
+    if (destMtime >= srcMtime) {
+        return outputPath
     }
-}
 
-function formatPackageTemplate(name) {
-    return `{
-    "name": ${JSON.stringify(name)},
-    "greniConfig": {
-        "entryPoints": {
-            "index.js": "src/index.js"
-        }
+    const options = {
+        dev: config.debugMode === true,
+        format: 'es',
+        name: pathModule.basename(component, '.html'),
+        shared: true
     }
-}`
-}
 
-function fileExists(path) {
-    try {
-        fs.statSync(path)
-        return path
-    } catch (error) {
-        return null
-    }
+    const inputText = fs.readFileSync(component, {encoding: 'utf-8'})
+    const compiled = svelte.compile(inputText, options)
+    const code = `${compiled.code}\n//# sourceMappingURL=${compiled.map.toUrl()}\n`;
+    fs.writeFileSync(outputPath, code)
+
+    return outputPath
 }
 
 function rollupIncludePaths(config) {
@@ -145,6 +241,12 @@ function rollupIncludePaths(config) {
 
             origin = pathModule.dirname(origin)
             const path = pathModule.join(origin, file)
+
+            if (/\.html$/.test(file)) {
+                // This is a Svelte component
+                return compileSvelte(config, path)
+            }
+
             if (config._componentPaths[path] !== undefined) {
                 return config._componentPaths[path]
             }
@@ -152,77 +254,6 @@ function rollupIncludePaths(config) {
             return fileExists(path)
         }
     }
-}
-
-function makeDirsSync(path) {
-    path = pathModule.resolve(path)
-
-    try {
-        fs.mkdirSync(path)
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            makeDirsSync(pathModule.dirname(path))
-            makeDirsSync(path)
-        } else {
-            try {
-                const stat = fs.statSync(path)
-                if (!stat.isDirectory()) { throw error }
-            } catch (err) {
-                throw error
-            }
-        }
-    }
-}
-
-function compileSvelte(config) {
-    const components = config.components
-    for (const component of components) {
-        const outputPath = pathModule.resolve(`${config.output}/${component}`.replace(/\.html$/, '.js'))
-        const buildMode = config.debugMode ? 'debug' : 'prod'
-        const underlyingOutputPath = `${outputPath}.${buildMode}`
-        console.log(`svelte ${buildMode} ${component} -> ${outputPath}`)
-
-        config._componentPaths[pathModule.resolve(component.replace(/\.html$/, '.js'))] = outputPath
-        makeDirsSync(pathModule.dirname(outputPath))
-
-        while (true) {
-            try {
-                fs.symlinkSync(underlyingOutputPath, outputPath)
-                break
-            } catch (error) {
-                if (error.code === 'EEXIST') {
-                    fs.unlinkSync(outputPath)
-                    continue
-                }
-
-                throw new Error(`Failed to link ${outputPath} -> ${underlyingOutputPath}: ${error}`)
-            }
-        }
-
-        const srcMtime = fs.statSync(component).mtime
-        let destMtime = 0
-        try {
-            destMtime = fs.statSync(outputPath).mtime
-        } catch (error) {}
-
-        if (destMtime >= srcMtime) {
-            continue
-        }
-
-        const options = {
-            dev: config.debugMode === true,
-            format: 'es',
-            name: pathModule.basename(component, '.html'),
-            shared: true
-        }
-
-        const inputText = fs.readFileSync(component, {encoding: 'utf-8'})
-        const compiled = svelte.compile(inputText, options)
-        const code = `${compiled.code}\n//# sourceMappingURL=${compiled.map.toUrl()}\n`;
-        fs.writeFileSync(underlyingOutputPath, code)
-    }
-
-    return new Promise((resolve) => resolve())
 }
 
 function compileRollup(config) {
@@ -281,8 +312,7 @@ function compileRollup(config) {
 }
 
 function compileSorcery(config) {
-    const entryPoints = config.entryPoints
-    for (let output of Object.keys(entryPoints)) {
+    for (let output of Object.keys(config.entryPoints)) {
         output = pathModule.join(config.output, output)
         console.log(`sorcery ${output}`)
         sorcery.load(output).then((chain) => {
@@ -294,42 +324,6 @@ function compileSorcery(config) {
 }
 
 function build(config) {
-    if (config.output === undefined) {
-        config.output = './output'
-    }
-    config.output = config.output.replace(/\/+$/, '')
-
-    if (config.components === undefined) {
-        config.components = []
-    }
-
-    if (typeof config.components !== 'object' || !Array.isArray(config.components)) {
-        throw new Error(`Configuration "components" must be an object. Got ${config.components}`)
-    }
-
-    if (config.entryPoints === undefined) {
-        config.entryPoints = {}
-    }
-
-    if (typeof config.entryPoints !== 'object' || Array.isArray(config.entryPoints)) {
-        throw new Error(`Configuration "entryPoints" must be an object. Got ${config.entryPoints}`)
-    }
-
-    if (config.debugMode === undefined) {
-        config.debugMode = false
-    }
-
-    if (config.eslint === undefined) {
-        config.eslint = true
-    }
-
-    if (config.buble === undefined) {
-        config.buble = null
-    }
-
-    // Internal state
-    config._componentPaths = {}
-
     try {
         fs.mkdirSync(config.output)
     } catch (error) {
@@ -338,9 +332,7 @@ function build(config) {
         }
     }
 
-    return compileSvelte(config).
-        then(() => compileRollup(config)).
-        then(() => compileSorcery(config))
+    return compileRollup(config).then(() => compileSorcery(config))
 }
 
 function main() {
@@ -365,18 +357,9 @@ function main() {
             process.chdir(args['-C'])
         }
 
-        let config = tryLoadJSON('greni.json', {})
+        const config = loadManifest('package.json', {})
         if (!config) {
-            config = tryLoadJSON('package.json', {})
-            if (!config) {
-                throw new Error('Failed to find configuration file. Create "greni.json".')
-            }
-
-            config = config.greniConfig
-            if (!config) {
-                throw new Error('Failed to find "greniConfig" key in "package.json". ' +
-                                'Either create "greni.json" or add "greniConfig" to your "package.json".')
-            }
+            throw new Error('Failed to find "greniConfig" key in "package.json".')
         }
 
         if (args['--debug']) {
