@@ -207,6 +207,7 @@ function compileSvelte(config, component) {
         dev: config.debugMode === true,
         format: 'es',
         name: pathModule.basename(component, '.html'),
+        filename: component,
         shared: true
     }
 
