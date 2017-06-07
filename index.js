@@ -205,9 +205,9 @@ function compileSvelte(config, component) {
 
     const options = {
         dev: config.debugMode === true,
+        filename: component,
         format: 'es',
         name: pathModule.basename(component, '.html'),
-        filename: component,
         shared: true
     }
 
@@ -220,6 +220,11 @@ function compileSvelte(config, component) {
 }
 
 function rollupIncludePaths(config) {
+    // When resolving imports within a component, we should look relative to the component's
+    // original source path, not the path of the built artifact. This index allows us
+    // to look up a source path from a built artifact.
+    const originLookup = new Map()
+
     function searchProjectModule(file) {
         const workingDir = process.cwd()
 
@@ -241,13 +246,21 @@ function rollupIncludePaths(config) {
             }
 
             origin = pathModule.dirname(origin)
-            const path = pathModule.join(origin, file)
 
             if (/\.html$/.test(file)) {
                 // This is a Svelte component
-                return compileSvelte(config, path)
+                if (originLookup.has(origin)) {
+                    origin = originLookup.get(origin)
+                }
+
+                const path = pathModule.join(origin, file)
+                const outputPath = compileSvelte(config, path)
+                const outputDir = pathModule.dirname(outputPath)
+                originLookup.set(outputDir, pathModule.join(origin, pathModule.dirname(file)))
+                return outputPath
             }
 
+            const path = pathModule.join(origin, file)
             if (config._componentPaths[path] !== undefined) {
                 return config._componentPaths[path]
             }
