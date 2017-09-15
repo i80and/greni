@@ -313,12 +313,12 @@ function compileRollup(config) {
         console.log(`rollup ${entryPoint} -> ${outputPath}`)
 
         promises.push(rollup.rollup({
-            entry: entryPoint,
+            input: entryPoint,
             plugins: plugins
         }).then((bundle) => bundle.write({
-            dest: outputPath,
+            file: outputPath,
             format: 'iife',
-            sourceMap: 'inline'
+            sourcemap: 'inline'
         })))
     }
 
